@@ -36,6 +36,8 @@ http://127.0.0.1:8000
 
 Upload a `.StormReplay` file and the service will generate a private report link.
 
+The web report includes an automatic replay breakdown with match-level flags, next-step advice, and per-player focus cards. The advice is rule-based and generated from replay facts; it does not require an AI API key.
+
 ## Run With Docker
 
 ```powershell
