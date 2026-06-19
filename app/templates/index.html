@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,15 +18,15 @@
 
       <section class="tool-panel">
         <div class="headline">
-          <h1>Upload replay. Get the match report.</h1>
-          <p>Drop a Heroes of the Storm replay and the server will parse teams, scores, levels, deaths, camps and structures from the game file.</p>
+          <h1>Загрузите реплей. Получите разбор.</h1>
+          <p>Сервис разберет Heroes of the Storm replay, покажет главные ошибки матча и даст понятные советы, что исправить в следующей игре.</p>
         </div>
 
         <form class="upload-box" action="/upload" method="post" enctype="multipart/form-data">
           <div class="upload-target">
             <input class="file-input" type="file" name="file" accept=".StormReplay" required>
-            <button class="primary-button" type="submit">Analyze Replay</button>
-            <p class="fineprint">Maximum file size: 64 MB. Reports are stored by private random link on this server.</p>
+            <button class="primary-button" type="submit">Разобрать реплей</button>
+            <p class="fineprint">Максимальный размер файла: 64 MB. Отчет хранится по приватной случайной ссылке на этом сервере.</p>
           </div>
         </form>
       </section>

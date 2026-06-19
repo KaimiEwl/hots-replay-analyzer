@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,219 +7,256 @@
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
-    <main class="shell">
+    {% macro severity_label(severity) -%}
+      {%- if severity == "high" -%}Критично
+      {%- elif severity == "medium" -%}Важно
+      {%- elif severity == "low" -%}Проверить
+      {%- else -%}Ок
+      {%- endif -%}
+    {%- endmacro %}
+
+    <main class="shell report-shell">
       <header class="topbar">
         <div class="brand">
           <div class="brand-mark">H</div>
           <span>HOTS Replay Analyzer</span>
         </div>
-        <a class="ghost-link" href="/">Analyze another</a>
+        <a class="ghost-link" href="/">Новый реплей</a>
       </header>
 
-      <section class="report-head">
-        <div>
-          <p class="muted">{{ report.replay_name }}</p>
+      <section class="match-strip">
+        <div class="match-title">
+          <p class="eyebrow">Отчет по реплею</p>
           <h1>{{ report.map }}</h1>
+          <p class="muted">{{ report.replay_name }}</p>
         </div>
-        <a class="ghost-link" href="{{ report.json_path }}">Raw JSON</a>
+        <div class="match-facts" aria-label="Replay facts">
+          <div class="fact"><span>Длительность</span><strong>{{ report.length }}</strong></div>
+          <div class="fact"><span>Победитель</span><strong>{% if report.winner_team %}Team {{ report.winner_team }}{% else %}неизвестно{% endif %}</strong></div>
+          <div class="fact"><span>Build</span><strong>{{ report.build }}</strong></div>
+        </div>
       </section>
 
-      <section class="metrics">
-        <div class="metric"><span>Length</span><strong>{{ report.length }}</strong></div>
-        <div class="metric"><span>Build</span><strong>{{ report.build }}</strong></div>
-        <div class="metric"><span>Protocol</span><strong>{{ report.protocol_build }}</strong></div>
-        <div class="metric"><span>Fallback</span><strong>{{ "yes" if report.fallback else "no" }}</strong></div>
+      <section class="coach-hero {{ report.breakdown.primary.severity }}">
+        <div class="coach-hero-main">
+          <span class="severity">{{ severity_label(report.breakdown.primary.severity) }}</span>
+          <h2>{{ report.breakdown.primary.title }}</h2>
+          <p>{{ report.breakdown.primary.body }}</p>
+        </div>
+        <aside class="action-panel">
+          <p class="eyebrow">Что делать в следующей игре</p>
+          <ol class="next-steps">
+            {% for step in report.breakdown.next_steps %}
+            <li>{{ step }}</li>
+            {% endfor %}
+          </ol>
+        </aside>
       </section>
 
+      {% if report.breakdown.supporting_summaries %}
       <section class="section">
         <div class="section-title">
-          <h2>Разбор Реплея</h2>
-          <p class="muted">Автоматический разбор по scoreboard, смертям, talent windows, camps и structure conversion.</p>
+          <div>
+            <p class="eyebrow">Почему это произошло</p>
+            <h2>Ключевые причины</h2>
+          </div>
         </div>
-        <div class="advice-grid">
-          {% for item in report.breakdown.summaries %}
-          <article class="advice-card {{ item.severity }}">
-            <span class="severity">{{ item.severity }}</span>
+        <div class="insight-grid">
+          {% for item in report.breakdown.supporting_summaries %}
+          <article class="insight-card {{ item.severity }}">
+            <span class="severity">{{ severity_label(item.severity) }}</span>
             <h3>{{ item.title }}</h3>
             <p>{{ item.body }}</p>
           </article>
           {% endfor %}
         </div>
       </section>
-
-      <section class="section grid-2">
-        <div class="coach-panel">
-          <h2>Что Делать Дальше</h2>
-          <ol class="next-steps">
-            {% for step in report.breakdown.next_steps %}
-            <li>{{ step }}</li>
-            {% endfor %}
-          </ol>
-        </div>
-        <div class="coach-panel">
-          <h2>Как Читать Отчет</h2>
-          <p>Это не просто цифры. Ищи повторяющийся паттерн: смерть перед objective, драка в минус talent tier, camp без тайминга или выигранный fight без structure/objective.</p>
-        </div>
-      </section>
+      {% endif %}
 
       <section class="section">
-        <h2>Фокус По Игрокам</h2>
-        <div class="player-advice-grid">
-          {% for card in report.breakdown.player_cards %}
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">Личный фокус</p>
+            <h2>Кому что исправить</h2>
+          </div>
+          <p class="muted">Первые карточки - самые заметные авто-флаги по реплею.</p>
+        </div>
+        <div class="priority-grid">
+          {% for card in report.breakdown.priority_players %}
           <article class="player-advice {{ card.severity }}">
             <div class="player-advice-head">
               <div>
                 <h3>{{ card.player.name }}</h3>
                 <p class="muted">{{ card.player.hero }} · {{ card.player.view.kda }} · dead {{ card.player.view.dead_time }}</p>
               </div>
-              <span class="severity">{{ card.severity }}</span>
+              <span class="severity">{{ severity_label(card.severity) }}</span>
             </div>
             <ul>
               {% for issue in card.issues %}
               <li>{{ issue }}</li>
               {% endfor %}
             </ul>
-            <strong>Совет:</strong>
+            <strong>Главный совет:</strong>
             <p>{{ card.actions[0] }}</p>
           </article>
           {% endfor %}
         </div>
       </section>
 
-      <section class="section">
-        <h2>Teams</h2>
-        <div class="grid-2">
-          {% for team_id, players in report.teams.items() %}
-          <div class="team">
-            <h3>Team {{ team_id }}</h3>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Player</th>
-                    <th>Hero</th>
-                    <th>KDA</th>
-                    <th>Hero Dmg</th>
-                    <th>Struct</th>
-                    <th>XP</th>
-                    <th>Dead</th>
-                    <th>Camps</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for player in players %}
-                  <tr>
-                    <td>{{ player.name }}</td>
-                    <td>{{ player.hero }}</td>
-                    <td>{{ player.view.kda }}</td>
-                    <td>{{ player.view.hero_damage }}</td>
-                    <td>{{ player.view.structure_damage }}</td>
-                    <td>{{ player.view.xp }}</td>
-                    <td>{{ player.view.dead_time }}</td>
-                    <td>{{ player.view.camps }}</td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
+      <section class="section detail-summary">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">Факты матча</p>
+            <h2>Сухие цифры ниже</h2>
           </div>
-          {% endfor %}
+          <a class="ghost-link" href="{{ report.json_path }}">JSON</a>
+        </div>
+        <div class="metrics compact-metrics">
+          <div class="metric"><span>Length</span><strong>{{ report.length }}</strong></div>
+          <div class="metric"><span>Protocol</span><strong>{{ report.protocol_build }}</strong></div>
+          <div class="metric"><span>Fallback</span><strong>{{ "yes" if report.fallback else "no" }}</strong></div>
+          <div class="metric"><span>Report ID</span><strong>{{ report.id[:8] }}</strong></div>
         </div>
       </section>
 
-      <section class="section">
-        <h2>Level Windows</h2>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Level</th>
-                <th>Team</th>
-                <th>Enemy</th>
-                <th>Diff</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in report.level_summary %}
-              <tr>
-                <td>{{ row.level }}</td>
-                <td>{{ row.team }}</td>
-                <td>{{ row.enemy }}</td>
-                <td>{{ row.diff_s }}s</td>
-              </tr>
+      <details class="technical-details">
+        <summary>Открыть таблицы, события и исходные метрики</summary>
+
+        <section class="section">
+          <h2>Команды</h2>
+          <div class="grid-2">
+            {% for team_id, players in report.teams.items() %}
+            <div class="team">
+              <h3>Team {{ team_id }}</h3>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Player</th>
+                      <th>Hero</th>
+                      <th>KDA</th>
+                      <th>Hero Dmg</th>
+                      <th>Struct</th>
+                      <th>XP</th>
+                      <th>Dead</th>
+                      <th>Camps</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for player in players %}
+                    <tr>
+                      <td>{{ player.name }}</td>
+                      <td>{{ player.hero }}</td>
+                      <td>{{ player.view.kda }}</td>
+                      <td>{{ player.view.hero_damage }}</td>
+                      <td>{{ player.view.structure_damage }}</td>
+                      <td>{{ player.view.xp }}</td>
+                      <td>{{ player.view.dead_time }}</td>
+                      <td>{{ player.view.camps }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Talent Windows</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Level</th>
+                  <th>Team</th>
+                  <th>Enemy</th>
+                  <th>Diff</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in report.level_summary %}
+                <tr>
+                  <td>{{ row.level }}</td>
+                  <td>{{ row.team }}</td>
+                  <td>{{ row.enemy }}</td>
+                  <td>{{ row.diff_s }}s</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section grid-2">
+          <div>
+            <h2>Damage Leaders</h2>
+            <div class="timeline">
+              {% for player in report.leaders %}
+              <div class="event">
+                <div class="time">#{{ loop.index }}</div>
+                <div>{{ player.name }} / {{ player.hero }} - {{ player.view.hero_damage }} hero damage</div>
+              </div>
               {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="section grid-2">
-        <div>
-          <h2>Damage Leaders</h2>
-          <div class="timeline">
-            {% for player in report.leaders %}
-            <div class="event">
-              <div class="time">#{{ loop.index }}</div>
-              <div>{{ player.name }} / {{ player.hero }} - {{ player.view.hero_damage }} hero damage</div>
             </div>
-            {% endfor %}
           </div>
-        </div>
-        <div>
-          <h2>Death Pressure</h2>
-          <div class="timeline">
-            {% for player in report.danger %}
-            <div class="event">
-              <div class="time">#{{ loop.index }}</div>
-              <div>{{ player.name }} / {{ player.hero }} - {{ player.view.kda }}, {{ player.view.dead_time }} dead</div>
+          <div>
+            <h2>Death Pressure</h2>
+            <div class="timeline">
+              {% for player in report.danger %}
+              <div class="event">
+                <div class="time">#{{ loop.index }}</div>
+                <div>{{ player.name }} / {{ player.hero }} - {{ player.view.kda }}, {{ player.view.dead_time }} dead</div>
+              </div>
+              {% endfor %}
             </div>
-            {% endfor %}
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section class="section">
-        <h2>Deaths</h2>
-        <div class="timeline">
-          {% for death in report.deaths %}
-          <div class="event">
-            <div class="time">{{ death.time }}</div>
-            <div>{{ death.victim }} killed by {{ death.killer }}</div>
-          </div>
-          {% else %}
-          <p class="muted">No hero deaths found in tracker events.</p>
-          {% endfor %}
-        </div>
-      </section>
-
-      <section class="section grid-2">
-        <div>
-          <h2>Camps</h2>
+        <section class="section">
+          <h2>Deaths</h2>
           <div class="timeline">
-            {% for camp in report.camps %}
+            {% for death in report.deaths %}
             <div class="event">
-              <div class="time">{{ camp.time }}</div>
-              <div>Team {{ camp.team_id }} captured {{ camp.camp_type }}</div>
+              <div class="time">{{ death.time }}</div>
+              <div>{{ death.victim }} killed by {{ death.killer }}</div>
             </div>
             {% else %}
-            <p class="muted">No camp captures found.</p>
+            <p class="muted">No hero deaths found in tracker events.</p>
             {% endfor %}
           </div>
-        </div>
-        <div>
-          <h2>Structures</h2>
-          <div class="timeline">
-            {% for structure in report.structures %}
-            <div class="event">
-              <div class="time">{{ structure.time }}</div>
-              <div>{{ structure.type }} destroyed by player {{ structure.killer }}</div>
+        </section>
+
+        <section class="section grid-2">
+          <div>
+            <h2>Camps</h2>
+            <div class="timeline">
+              {% for camp in report.camps %}
+              <div class="event">
+                <div class="time">{{ camp.time }}</div>
+                <div>Team {{ camp.team_id }} captured {{ camp.camp_type }}</div>
+              </div>
+              {% else %}
+              <p class="muted">No camp captures found.</p>
+              {% endfor %}
             </div>
-            {% else %}
-            <p class="muted">No major structure deaths found.</p>
-            {% endfor %}
           </div>
-        </div>
-      </section>
+          <div>
+            <h2>Structures</h2>
+            <div class="timeline">
+              {% for structure in report.structures %}
+              <div class="event">
+                <div class="time">{{ structure.time }}</div>
+                <div>{{ structure.type }} destroyed by player {{ structure.killer }}</div>
+              </div>
+              {% else %}
+              <p class="muted">No major structure deaths found.</p>
+              {% endfor %}
+            </div>
+          </div>
+        </section>
+      </details>
     </main>
   </body>
 </html>

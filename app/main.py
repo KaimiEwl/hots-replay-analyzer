@@ -272,10 +272,18 @@ def build_breakdown(result, teams):
             "Перед поздним objective ценность жизни выше лишнего poke.",
         ]
 
+    summaries = summaries[:5]
+    priority_players = [card for card in player_cards if card["severity"] != "good"][:4]
+    if not priority_players:
+        priority_players = player_cards[:4]
+
     return {
-        "summaries": summaries[:5],
+        "primary": summaries[0],
+        "summaries": summaries,
+        "supporting_summaries": summaries[1:],
         "next_steps": next_steps[:5],
         "player_cards": player_cards,
+        "priority_players": priority_players,
     }
 
 
@@ -321,6 +329,15 @@ def build_report_view(result):
         reverse=True,
     )[:3]
 
+    winner_team = next(
+        (
+            team_id
+            for team_id, players in teams.items()
+            if any(player.get("won") is True for player in players)
+        ),
+        None,
+    )
+
     return {
         "id": result.get("report_id"),
         "map": result.get("map"),
@@ -329,6 +346,7 @@ def build_report_view(result):
         "build": result.get("build"),
         "protocol_build": result.get("protocol_build"),
         "fallback": result.get("fallback"),
+        "winner_team": winner_team,
         "teams": teams,
         "level_summary": result.get("level_summary", []),
         "deaths": deaths,
