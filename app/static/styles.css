@@ -12,8 +12,11 @@
   --navy: #1d2f3b;
   --red: #a33c3c;
   --red-dark: #853030;
+  --red-soft: #fff0ef;
   --amber: #b2762d;
+  --amber-soft: #fff7e7;
   --green: #52745f;
+  --green-soft: #eef8f1;
   --blue: #315b75;
   --shadow: 0 18px 50px rgba(29, 47, 59, 0.11);
 }
@@ -315,6 +318,7 @@ a {
 }
 
 .insight-grid,
+.comparison-grid,
 .priority-grid,
 .player-advice-grid,
 .advice-grid {
@@ -323,7 +327,12 @@ a {
   gap: 14px;
 }
 
+.comparison-grid {
+  grid-template-columns: 1fr;
+}
+
 .insight-card,
+.comparison-card,
 .advice-card,
 .coach-panel,
 .player-advice {
@@ -334,28 +343,131 @@ a {
 }
 
 .insight-card,
+.comparison-card,
 .advice-card,
 .player-advice {
   border-left: 5px solid var(--green);
 }
 
 .insight-card.high,
+.comparison-card.high,
 .advice-card.high,
 .player-advice.high {
   border-left-color: var(--red);
 }
 
 .insight-card.medium,
+.comparison-card.medium,
 .advice-card.medium,
 .player-advice.medium {
   border-left-color: var(--amber);
 }
 
 .insight-card.low,
+.comparison-card.low,
+.comparison-card.good,
 .advice-card.low,
 .player-advice.low,
 .player-advice.good {
   border-left-color: var(--green);
+}
+
+.comparison-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.comparison-head .eyebrow {
+  display: block;
+}
+
+.comparison-head h3 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.compare-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.compare-box,
+.mini-box {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 13px;
+  background: var(--surface-soft);
+}
+
+.compare-box span,
+.mini-box span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.compare-box strong,
+.mini-box strong {
+  display: block;
+  color: #26302c;
+  font-size: 15px;
+  line-height: 1.42;
+}
+
+.compare-box.actual.high,
+.mini-box.actual.high {
+  border-color: rgba(163, 60, 60, 0.34);
+  background: var(--red-soft);
+}
+
+.compare-box.actual.medium,
+.mini-box.actual.medium {
+  border-color: rgba(178, 118, 45, 0.36);
+  background: var(--amber-soft);
+}
+
+.compare-box.actual.low,
+.compare-box.actual.good,
+.mini-box.actual.low,
+.mini-box.actual.good {
+  border-color: rgba(82, 116, 95, 0.34);
+  background: var(--green-soft);
+}
+
+.compare-box.expected,
+.compare-box.needed,
+.mini-box.expected {
+  border-color: rgba(82, 116, 95, 0.38);
+  background: var(--green-soft);
+}
+
+.compare-box.expected span,
+.compare-box.needed span,
+.mini-box.expected span {
+  color: #355c42;
+}
+
+.verdict {
+  margin: 14px 0 0;
+  color: #313734;
+  font-weight: 680;
+  line-height: 1.5;
+}
+
+.action-list {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 0;
+  padding-left: 20px;
+  line-height: 1.45;
 }
 
 .insight-card h3,
@@ -417,6 +529,13 @@ a {
   margin: 12px 0;
   padding-left: 20px;
   line-height: 1.45;
+}
+
+.mini-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .detail-summary {
@@ -524,9 +643,11 @@ tr:last-child td {
   .metrics,
   .match-facts,
   .insight-grid,
+  .compare-row,
   .priority-grid,
   .advice-grid,
-  .player-advice-grid {
+  .player-advice-grid,
+  .mini-compare {
     grid-template-columns: 1fr;
   }
 

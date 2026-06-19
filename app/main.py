@@ -91,6 +91,305 @@ def add_unique(items, item):
         items.append(item)
 
 
+def team_name(team_id):
+    return f"Team {team_id}" if team_id is not None else "Team ?"
+
+
+def percent(value):
+    return f"{round(value * 100)}%"
+
+
+def comparison_item(severity, title, metric, actual, expected, verdict, actions):
+    return {
+        "severity": severity,
+        "title": title,
+        "metric": metric,
+        "actual": actual,
+        "expected": expected,
+        "verdict": verdict,
+        "actions": actions[:3],
+        "actual_state": "good" if severity == "good" else severity,
+        "expected_state": "needed",
+    }
+
+
+def map_guidance(map_name):
+    profiles = {
+        "Alterac Pass": {
+            "name": "Alterac Pass",
+            "expected": "Перед Cavalry push должны быть зачищены волны, подготовлен side camp и сохранены 5 игроков. После objective главный call - fort/keep, а не лишний chase.",
+            "actions": [
+                "За 45-60 секунд до objective подготовить side lane и camp.",
+                "Если objective выигран, сразу идти в структуру ближайшей сильной линией.",
+                "Не начинать fight, если команда не успевает прийти 5v5 к prisoner channel.",
+            ],
+        },
+        "Paso de Alterac": {
+            "name": "Alterac Pass",
+            "expected": "Перед Cavalry push должны быть зачищены волны, подготовлен side camp и сохранены 5 игроков. После objective главный call - fort/keep, а не лишний chase.",
+            "actions": [
+                "За 45-60 секунд до objective подготовить side lane и camp.",
+                "Если objective выигран, сразу идти в структуру ближайшей сильной линией.",
+                "Не начинать fight, если команда не успевает прийти 5v5 к prisoner channel.",
+            ],
+        },
+        "Cursed Hollow": {
+            "name": "Cursed Hollow",
+            "expected": "Перед tribute нужен camp на противоположной линии и 5 живых героев. Не каждый tribute надо contest: иногда лучше взять структуру или soak.",
+            "actions": [
+                "Брать camp за 35-55 секунд до tribute.",
+                "Если tribute третий для врага, готовить позицию заранее, а не заходить последним.",
+                "Если fight плохой, отдать tribute и забрать structure/camp на другой стороне.",
+            ],
+        },
+        "Infernal Shrines": {
+            "name": "Infernal Shrines",
+            "expected": "Перед shrine нужны waveclear, camp pressure и позиция в choke. После Punisher надо забрать structure, а не просто выиграть драку.",
+            "actions": [
+                "Подходить к shrine заранее и занимать choke до начала objective.",
+                "Camp должен давить линию во время shrine, а не после него.",
+                "После Punisher сразу переводить его в fort/keep.",
+            ],
+        },
+        "Tomb of the Spider Queen": {
+            "name": "Tomb of the Spider Queen",
+            "expected": "Главная норма карты - не умирать с gems и делать turn-in после pick или camp pressure.",
+            "actions": [
+                "Не носить много gems без сейфового пути к turn-in.",
+                "После kill сразу проверять turn-in, а не искать новую драку.",
+                "Перед своим turn-in зачищать mid/top, чтобы Webweavers дали structure.",
+            ],
+        },
+        "Battlefield of Eternity": {
+            "name": "Battlefield of Eternity",
+            "expected": "Перед immortal phase команда должна решить: race или defense. Смешанный call обычно проигрывает objective и позицию.",
+            "actions": [
+                "До immortal заранее выбрать race/defense план по составам.",
+                "Не драться без talent tier, если immortal можно просто defended.",
+                "После выигранного immortal пушить одной линией до structure.",
+            ],
+        },
+        "Dragon Shire": {
+            "name": "Dragon Shire",
+            "expected": "Норма карты - держать soak и shrine control, а Dragon Knight брать после pick или сильного lane pressure.",
+            "actions": [
+                "Не бросать soak ради долгой драки за один shrine.",
+                "После kill сразу переводить преимущество в shrine или DK channel.",
+                "DK должен забирать structure, а не стоять в драках без цели.",
+            ],
+        },
+    }
+    return profiles.get(
+        map_name,
+        {
+            "name": map_name or "Unknown map",
+            "expected": "Перед objective должны быть 5 живых героев, зачищенные волны и понятный следующий call: structure, camp, boss, objective или reset.",
+            "actions": [
+                "За 30-60 секунд до objective прекратить случайный poke и подготовить позицию.",
+                "После выигранной драки сразу назвать награду: structure, camp, boss или objective.",
+                "Если враг первым взял talent tier, играть от waveclear и короткого pick, не от честного 5v5.",
+            ],
+        },
+    )
+
+
+def build_comparisons(result, team_rows, next_steps):
+    target_team_id = result.get("target", {}).get("team")
+    target_row = next((team for team in team_rows if team["team_id"] == target_team_id), None)
+    if not target_row:
+        target_row = next((team for team in team_rows if not team["won"]), None) or (team_rows[0] if team_rows else None)
+    enemy_row = next((team for team in team_rows if team is not target_row), None)
+    if not target_row or not enemy_row:
+        return []
+
+    comparisons = []
+    tt = target_row["totals"]
+    et = enemy_row["totals"]
+    target_label = team_name(target_row["team_id"])
+    enemy_label = team_name(enemy_row["team_id"])
+
+    death_actions = [
+        "Перед objective считать смерть хуже потерянного poke: если engage не начался, лишний риск не брать.",
+        "После потери фронта сразу reset, а не спасать уже проигранную драку.",
+        "После 16 уровня любой death должен давать команде понятную компенсацию: keep, boss, objective или core pressure.",
+    ]
+    if tt["deaths"] >= et["deaths"] + 5 or tt["dead_time"] >= et["dead_time"] + 180:
+        severity = "high"
+        verdict = "Вы отдали слишком много времени карты. Из-за этого команда позже приходит на objective, хуже защищает линии и не успевает конвертировать выигранные моменты."
+        add_unique(next_steps, death_actions[0])
+    elif tt["deaths"] > et["deaths"] or tt["dead_time"] > et["dead_time"] + 90:
+        severity = "medium"
+        verdict = "Смерти не единственная причина матча, но tempo проседал. Нужно снижать preventable deaths перед важными окнами."
+        add_unique(next_steps, death_actions[1])
+    else:
+        severity = "good"
+        verdict = "По deaths/dead time команда не проиграла матч грубо. Это можно считать рабочей базой."
+    comparisons.append(
+        comparison_item(
+            severity,
+            "Жизни перед важными окнами",
+            "Deaths / dead time",
+            f"{target_label}: {tt['deaths']} deaths, {mmss(tt['dead_time'])} dead. {enemy_label}: {et['deaths']} deaths, {mmss(et['dead_time'])} dead.",
+            "Держать 5 героев живыми перед objective и поздними talent tiers. Лишняя смерть допустима только если она сразу дает structure/objective.",
+            verdict,
+            death_actions,
+        )
+    )
+
+    talent_rows = result.get("level_summary", [])
+    bad_talent = next(
+        (
+            row
+            for row in talent_rows
+            if row.get("level") in {10, 13, 16, 20} and (row.get("diff_s") or 0) >= 15
+        ),
+        None,
+    )
+    bad_early = next(
+        (
+            row
+            for row in talent_rows
+            if row.get("level") in {4, 7} and (row.get("diff_s") or 0) >= 15
+        ),
+        None,
+    )
+    talent_actions = [
+        "Если враг первым взял 10/13/16/20, не начинать честный 5v5 до выравнивания таланта.",
+        "Играть от waveclear, choke и короткого pick, пока talent tier не сравнялся.",
+        "Перед следующим talent tier заранее добрать soak, а не идти на долгий poke в центре карты.",
+    ]
+    if bad_talent:
+        severity = "high"
+        actual = f"{target_label} получила level {bad_talent['level']} позже на {round(bad_talent['diff_s'])} секунд."
+        verdict = "Это красное окно: в такой момент враг имеет полноценный talent advantage, и обычная драка почти всегда плохая."
+        add_unique(next_steps, talent_actions[0])
+    elif bad_early:
+        severity = "medium"
+        actual = f"{target_label} получила level {bad_early['level']} позже на {round(bad_early['diff_s'])} секунд."
+        verdict = "Это ранний warning: soak/темп просели до большого talent tier, значит следующий objective нужно готовить осторожнее."
+        add_unique(next_steps, talent_actions[2])
+    else:
+        severity = "good"
+        actual = "Критичных задержек на 10/13/16/20 по таймеру не найдено."
+        verdict = "Talent windows не выглядят главным провалом. В таких играх важнее смотреть deaths, camps и conversion."
+    comparisons.append(
+        comparison_item(
+            severity,
+            "Talent tier нельзя игнорировать",
+            "Level timing",
+            actual,
+            "К 10/13/16/20 подходить одновременно или раньше врага. Если враг взял tier первым - переждать, чистить волны, не принимать полный fight.",
+            verdict,
+            talent_actions,
+        )
+    )
+
+    if not is_aram_map(result.get("map")):
+        camp_actions = [
+            "Брать camp за 30-60 секунд до objective или push-окна, чтобы линия давила сама.",
+            "Если camp уже стоит, заранее назначить игрока: кто берет, кто держит soak, кто страхует.",
+            "Не брать camp после проигранного objective, если из-за этого падает fort/keep: сначала defense.",
+        ]
+        camp_diff = et["camps"] - tt["camps"]
+        if camp_diff >= 3:
+            severity = "high"
+            verdict = "Camp pressure проигран сильно. Враг чаще начинал важные окна с готовой side pressure, а ваша команда реагировала позже."
+            add_unique(next_steps, camp_actions[0])
+        elif camp_diff >= 1:
+            severity = "medium"
+            verdict = "По лагерям есть отставание. Это не всегда проигрывает матч само, но делает objective тяжелее."
+            add_unique(next_steps, camp_actions[1])
+        else:
+            severity = "good"
+            verdict = "По количеству camp captures команда не отстала. Дальше важно смотреть именно тайминг лагерей."
+        comparisons.append(
+            comparison_item(
+                severity,
+                "Лагеря должны работать на objective",
+                "Camp pressure",
+                f"{target_label}: {tt['camps']} camps. {enemy_label}: {et['camps']} camps.",
+                "Не отставать по camps больше чем на 1 и брать их до objective, а не случайно после драки.",
+                verdict,
+                camp_actions,
+            )
+        )
+
+    conversion = tt["structure_damage"] / max(tt["siege_damage"], 1)
+    enemy_conversion = et["structure_damage"] / max(et["siege_damage"], 1)
+    structure_actions = [
+        "После выигранной драки не искать еще один kill на той же точке: сразу идти в fort/keep, boss, camp или objective.",
+        "Если волна уже под структурой, call должен быть structure damage, а не reset без награды.",
+        "После objective заранее выбрать линию пуша, чтобы вся команда била одну структуру.",
+    ]
+    if tt["siege_damage"] >= 50000 and conversion < 0.06:
+        severity = "high"
+        verdict = "Вы чистили волны и создавали давление, но почти не превращали его в карту. Это как раз формат 'цифры есть, победы нет'."
+        add_unique(next_steps, structure_actions[0])
+    elif tt["structure_damage"] < 0.65 * max(et["structure_damage"], 1) or conversion < 0.10:
+        severity = "medium"
+        verdict = "Конвертация ниже нормы: часть хороших окон уходила в воздух вместо fort/keep."
+        add_unique(next_steps, structure_actions[1])
+    else:
+        severity = "good"
+        verdict = "Structure conversion выглядит приемлемо: давление хотя бы частично превращалось в карту."
+    comparisons.append(
+        comparison_item(
+            severity,
+            "Давление нужно превращать в строения",
+            "Siege -> structure",
+            f"{format_number(tt['siege_damage'])} siege -> {format_number(tt['structure_damage'])} structure ({percent(conversion)}). У врага: {percent(enemy_conversion)}.",
+            "После waveclear, camp, kill или objective должен быть конкретный результат: fort, keep, boss, objective или безопасный reset.",
+            verdict,
+            structure_actions,
+        )
+    )
+
+    kill_actions = [
+        "После каждого kill сразу задать call: structure, camp, boss, objective или reset.",
+        "Если kill далеко от объекта и волны не готовы, не chase: забрать soak/camp и подготовить следующий fight.",
+        "После 2 kills не делить команду на три идеи. Все идут в одну награду.",
+    ]
+    if tt["takedowns"] >= et["takedowns"] - 2 and tt["structure_damage"] < 0.6 * max(et["structure_damage"], 1):
+        severity = "medium"
+        verdict = "Kill participation был, но карта за это не забиралась. Значит проблема не только в драках, а в call после драки."
+        add_unique(next_steps, kill_actions[0])
+    elif tt["takedowns"] + 4 < et["takedowns"]:
+        severity = "medium"
+        verdict = "Команда проиграла по takedowns, поэтому часть карты была потеряна через fight pressure."
+    else:
+        severity = "good"
+        verdict = "По takedowns нет явного разрыва. Следующий слой - проверять, что команда делала после выигранных kills."
+    comparisons.append(
+        comparison_item(
+            severity,
+            "Kill должен давать награду",
+            "Takedowns -> reward",
+            f"{target_label}: {tt['takedowns']} takedowns и {format_number(tt['structure_damage'])} structure damage. {enemy_label}: {et['takedowns']} и {format_number(et['structure_damage'])}.",
+            "После kill команда должна забирать карту. Если kill не ведет к structure/camp/objective, он часто не меняет игру.",
+            verdict,
+            kill_actions,
+        )
+    )
+
+    guidance = map_guidance(result.get("map"))
+    map_actions = guidance["actions"]
+    comparisons.append(
+        comparison_item(
+            "low",
+            f"Карта: {guidance['name']}",
+            "Map plan",
+            f"Реплей сыгран на {result.get('map') or 'unknown map'}. Сейчас анализ применяет общие правила карты и macro-сравнения.",
+            guidance["expected"],
+            "Это обязательный план на следующую версию разбора: привязать все советы к файлу таймингов конкретной карты.",
+            map_actions,
+        )
+    )
+    for action in map_actions[:1]:
+        add_unique(next_steps, action)
+
+    return comparisons
+
+
 def player_advice(player, game_length, map_name):
     score = player.get("score", {})
     deaths = stat(score, "Deaths")
@@ -153,12 +452,20 @@ def player_advice(player, game_length, map_name):
         actions.append("Следующий шаг: смотреть конкретные таймкоды deaths/objectives, а не только scoreboard.")
 
     severity = "high" if points >= 6 else "medium" if points >= 3 else "low" if points else "good"
+    actual_summary = (
+        f"{deaths} deaths, {mmss(dead_time)} dead, "
+        f"{format_number(structure_damage)} structure, {format_number(camps)} camps"
+    )
+    expected_summary = actions[0] if actions else "Сохранить этот профиль и дальше проверять таймкоды ключевых fight."
+
     return {
         "player": player,
         "severity": severity,
         "points": points,
         "issues": issues[:3],
         "actions": actions[:3],
+        "actual_summary": actual_summary,
+        "expected_summary": expected_summary,
     }
 
 
@@ -178,6 +485,8 @@ def build_breakdown(result, teams):
         totals = team_totals(players)
         won = any(player.get("won") is True for player in players)
         team_rows.append({"team_id": team_id, "players": players, "totals": totals, "won": won})
+
+    comparisons = build_comparisons(result, team_rows, next_steps)
 
     if len(team_rows) >= 2:
         loser = next((team for team in team_rows if not team["won"]), None)
@@ -281,6 +590,7 @@ def build_breakdown(result, teams):
         "primary": summaries[0],
         "summaries": summaries,
         "supporting_summaries": summaries[1:],
+        "comparisons": comparisons,
         "next_steps": next_steps[:5],
         "player_cards": player_cards,
         "priority_players": priority_players,

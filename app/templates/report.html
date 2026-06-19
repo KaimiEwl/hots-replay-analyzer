@@ -10,8 +10,8 @@
     {% macro severity_label(severity) -%}
       {%- if severity == "high" -%}Критично
       {%- elif severity == "medium" -%}Важно
-      {%- elif severity == "low" -%}Проверить
-      {%- else -%}Ок
+      {%- elif severity == "low" -%}Нужно
+      {%- else -%}Сделано
       {%- endif -%}
     {%- endmacro %}
 
@@ -53,6 +53,45 @@
         </aside>
       </section>
 
+      <section class="section">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">Факт против нормы</p>
+            <h2>Вы сделали / надо было</h2>
+          </div>
+          <p class="muted">Красное - критично, желтое - важно, зеленое - правильная норма или обязательный следующий шаг.</p>
+        </div>
+        <div class="comparison-grid">
+          {% for item in report.breakdown.comparisons %}
+          <article class="comparison-card {{ item.severity }}">
+            <div class="comparison-head">
+              <div>
+                <span class="eyebrow">{{ item.metric }}</span>
+                <h3>{{ item.title }}</h3>
+              </div>
+              <span class="severity">{{ severity_label(item.severity) }}</span>
+            </div>
+            <div class="compare-row">
+              <div class="compare-box actual {{ item.actual_state }}">
+                <span>Вы сделали</span>
+                <strong>{{ item.actual }}</strong>
+              </div>
+              <div class="compare-box expected {{ item.expected_state }}">
+                <span>Надо было</span>
+                <strong>{{ item.expected }}</strong>
+              </div>
+            </div>
+            <p class="verdict">{{ item.verdict }}</p>
+            <ul class="action-list">
+              {% for action in item.actions %}
+              <li>{{ action }}</li>
+              {% endfor %}
+            </ul>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+
       {% if report.breakdown.supporting_summaries %}
       <section class="section">
         <div class="section-title">
@@ -90,6 +129,16 @@
                 <p class="muted">{{ card.player.hero }} · {{ card.player.view.kda }} · dead {{ card.player.view.dead_time }}</p>
               </div>
               <span class="severity">{{ severity_label(card.severity) }}</span>
+            </div>
+            <div class="mini-compare">
+              <div class="mini-box actual {{ card.severity }}">
+                <span>Игрок сделал</span>
+                <strong>{{ card.actual_summary }}</strong>
+              </div>
+              <div class="mini-box expected">
+                <span>Нужно</span>
+                <strong>{{ card.expected_summary }}</strong>
+              </div>
             </div>
             <ul>
               {% for issue in card.issues %}
