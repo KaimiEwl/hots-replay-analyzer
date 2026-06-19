@@ -37,20 +37,70 @@
         </div>
       </section>
 
-      <section class="coach-hero {{ report.breakdown.primary.severity }}">
+      <section class="coach-hero {{ report.breakdown.win_focus.severity }}">
         <div class="coach-hero-main">
-          <span class="severity">{{ severity_label(report.breakdown.primary.severity) }}</span>
-          <h2>{{ report.breakdown.primary.title }}</h2>
-          <p>{{ report.breakdown.primary.body }}</p>
+          <span class="severity">{{ severity_label(report.breakdown.win_focus.severity) }}</span>
+          <p class="eyebrow">Главная проблема матча</p>
+          <h2>{{ report.breakdown.win_focus.title }}</h2>
+          <p>{{ report.breakdown.win_focus.problem }}</p>
+          <div class="hero-fix">
+            <span>Исправить первым</span>
+            <strong>{{ report.breakdown.win_focus.first_fix }}</strong>
+          </div>
         </div>
         <aside class="action-panel">
-          <p class="eyebrow">Что делать в следующей игре</p>
+          <p class="eyebrow">Короткий план победы</p>
           <ol class="next-steps">
-            {% for step in report.breakdown.next_steps %}
+            {% for step in report.breakdown.win_focus.quick_plan %}
             <li>{{ step }}</li>
             {% endfor %}
           </ol>
         </aside>
+      </section>
+
+      <section class="section victory-section">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">Главное для победы</p>
+            <h2>Основные ошибки и исправления</h2>
+          </div>
+          <p class="muted">Сначала эти пункты. Остальные цифры ниже нужны только как доказательство.</p>
+        </div>
+        <div class="victory-grid">
+          <article class="focus-panel">
+            <h3>Критичные моменты</h3>
+            <div class="focus-list">
+              {% for item in report.breakdown.win_focus.critical_moments %}
+              <div class="focus-item {{ item.severity }}">
+                <div class="focus-head">
+                  <span class="severity">{{ severity_label(item.severity) }}</span>
+                  <strong>{{ item.window }}</strong>
+                </div>
+                <h4>{{ item.title }}</h4>
+                <p><b>Проблема:</b> {{ item.problem }}</p>
+                <p><b>Почему это мешало победить:</b> {{ item.impact }}</p>
+                <p><b>Исправить:</b> {{ item.fix }}</p>
+              </div>
+              {% endfor %}
+            </div>
+          </article>
+
+          <article class="focus-panel">
+            <h3>Кому что исправить</h3>
+            <div class="player-fix-list">
+              {% for item in report.breakdown.win_focus.player_fixes %}
+              <div class="player-fix {{ item.severity }}">
+                <div class="player-fix-title">
+                  <strong>{{ item.name }}</strong>
+                  <span>{{ item.hero }}</span>
+                </div>
+                <p><b>Проблема:</b> {{ item.problem }}</p>
+                <p><b>Исправить:</b> {{ item.fix }}</p>
+              </div>
+              {% endfor %}
+            </div>
+          </article>
+        </div>
       </section>
 
       <section class="section">
@@ -116,7 +166,7 @@
         <div class="section-title">
           <div>
             <p class="eyebrow">Личный фокус</p>
-            <h2>Кому что исправить</h2>
+            <h2>Подробно по игрокам</h2>
           </div>
           <p class="muted">Первые карточки - самые заметные авто-флаги по реплею.</p>
         </div>

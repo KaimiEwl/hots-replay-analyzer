@@ -270,6 +270,30 @@ a {
   line-height: 1.55;
 }
 
+.hero-fix {
+  margin-top: 18px;
+  border: 1px solid rgba(82, 116, 95, 0.34);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--green-soft);
+}
+
+.hero-fix span {
+  display: block;
+  margin-bottom: 7px;
+  color: #355c42;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.hero-fix strong {
+  display: block;
+  color: #21382a;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
 .action-panel {
   border-radius: 8px;
   padding: 18px;
@@ -315,6 +339,95 @@ a {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.victory-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.focus-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--surface);
+  box-shadow: 0 14px 34px rgba(29, 47, 59, 0.08);
+}
+
+.focus-panel h3 {
+  margin: 0 0 14px;
+  font-size: 22px;
+}
+
+.focus-list,
+.player-fix-list {
+  display: grid;
+  gap: 12px;
+}
+
+.focus-item,
+.player-fix {
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--green);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--surface-soft);
+}
+
+.focus-item.high,
+.player-fix.high {
+  border-left-color: var(--red);
+  background: var(--red-soft);
+}
+
+.focus-item.medium,
+.player-fix.medium {
+  border-left-color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.focus-item.low,
+.focus-item.good,
+.player-fix.low,
+.player-fix.good {
+  border-left-color: var(--green);
+  background: var(--green-soft);
+}
+
+.focus-head,
+.player-fix-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.focus-head strong {
+  color: #2b3430;
+  font-size: 14px;
+}
+
+.focus-item h4 {
+  margin: 12px 0 8px;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.focus-item p,
+.player-fix p {
+  margin: 8px 0 0;
+  line-height: 1.45;
+}
+
+.player-fix-title strong {
+  font-size: 17px;
+}
+
+.player-fix-title span {
+  color: var(--muted);
+  font-weight: 760;
 }
 
 .insight-grid,
@@ -639,6 +752,7 @@ tr:last-child td {
   .tool-panel,
   .match-strip,
   .coach-hero,
+  .victory-grid,
   .grid-2,
   .metrics,
   .match-facts,

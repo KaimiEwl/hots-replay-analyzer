@@ -113,6 +113,86 @@ def comparison_item(severity, title, metric, actual, expected, verdict, actions)
     }
 
 
+def severity_score(severity):
+    return {"high": 3, "medium": 2, "low": 1, "good": 0}.get(severity, 0)
+
+
+def critical_window_label(metric):
+    labels = {
+        "Deaths / dead time": "Перед objective и поздними драками",
+        "Level timing": "Talent window",
+        "Camp pressure": "Перед objective",
+        "Siege -> structure": "После fight/objective",
+        "Takedowns -> reward": "После kill",
+        "Map plan": "План карты",
+    }
+    return labels.get(metric, metric)
+
+
+def build_win_focus(comparisons, priority_players, next_steps):
+    problem_items = [item for item in comparisons if item["severity"] in {"high", "medium"}]
+    if not problem_items:
+        problem_items = [item for item in comparisons if item["severity"] != "good"]
+    if not problem_items and comparisons:
+        problem_items = comparisons[:1]
+
+    problem_items = sorted(
+        problem_items,
+        key=lambda item: (severity_score(item["severity"]), item["metric"] != "Map plan"),
+        reverse=True,
+    )
+    main = problem_items[0] if problem_items else None
+
+    critical_moments = []
+    for item in problem_items[:4]:
+        critical_moments.append(
+            {
+                "severity": item["severity"],
+                "window": critical_window_label(item["metric"]),
+                "title": item["title"],
+                "problem": item["actual"],
+                "impact": item["verdict"],
+                "fix": item["actions"][0] if item["actions"] else item["expected"],
+            }
+        )
+
+    player_fixes = []
+    for card in priority_players[:4]:
+        player = card["player"]
+        issue = card["issues"][0] if card["issues"] else "Явной красной проблемы по базовым метрикам нет."
+        action = card["actions"][0] if card["actions"] else "Проверить таймкоды смертей, objectives и fights."
+        player_fixes.append(
+            {
+                "severity": card["severity"],
+                "name": player.get("name"),
+                "hero": player.get("hero"),
+                "problem": issue,
+                "fix": action,
+            }
+        )
+
+    if main:
+        title = main["title"]
+        problem = main["verdict"]
+        first_fix = main["actions"][0] if main["actions"] else main["expected"]
+        severity = main["severity"]
+    else:
+        title = "Главная проблема не выделена"
+        problem = "По базовым метрикам нет одного очевидного провала. Нужно смотреть таймкоды fights/objectives."
+        first_fix = "Выбрать 2-3 ключевых fight и проверить: была ли цель после драки."
+        severity = "low"
+
+    return {
+        "severity": severity,
+        "title": title,
+        "problem": problem,
+        "first_fix": first_fix,
+        "critical_moments": critical_moments,
+        "player_fixes": player_fixes,
+        "quick_plan": next_steps[:4],
+    }
+
+
 def map_guidance(map_name):
     profiles = {
         "Alterac Pass": {
@@ -585,11 +665,13 @@ def build_breakdown(result, teams):
     priority_players = [card for card in player_cards if card["severity"] != "good"][:4]
     if not priority_players:
         priority_players = player_cards[:4]
+    win_focus = build_win_focus(comparisons, priority_players, next_steps)
 
     return {
         "primary": summaries[0],
         "summaries": summaries,
         "supporting_summaries": summaries[1:],
+        "win_focus": win_focus,
         "comparisons": comparisons,
         "next_steps": next_steps[:5],
         "player_cards": player_cards,
