@@ -129,6 +129,208 @@ def critical_window_label(metric):
     return labels.get(metric, metric)
 
 
+def time_to_seconds(value):
+    if not value or not isinstance(value, str) or ":" not in value:
+        return None
+    parts = value.split(":")
+    try:
+        if len(parts) == 2:
+            return int(parts[0]) * 60 + int(parts[1])
+        if len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+    except ValueError:
+        return None
+    return None
+
+
+def player_by_pid(players):
+    return {player.get("pid"): player for player in players}
+
+
+def short_player(player):
+    if not player:
+        return "Unknown player"
+    return f"{player.get('name', 'Unknown')} / {player.get('hero', 'Unknown')}"
+
+
+def add_moment(moments, report_context, severity, time, category, title, happened, why, check, ask):
+    copy_lines = [
+        "Разбери этот момент из HOTS replay.",
+        f"Карта: {report_context['map']}",
+        f"Реплей: {report_context['replay_name']}",
+        f"Основной игрок: {report_context['target_name']} / {report_context['target_hero']} ({report_context['target_team']})",
+        f"Тайминг: {time}",
+        f"Тип момента: {category}",
+        f"Что произошло: {happened}",
+        f"Почему это важно: {why}",
+        f"Что проверить в реплее: {check}",
+        f"Что нужно получить в ответе: {ask}",
+    ]
+    moments.append(
+        {
+            "severity": severity,
+            "time": time,
+            "category": category,
+            "title": title,
+            "happened": happened,
+            "why": why,
+            "check": check,
+            "ask": ask,
+            "copy_text": "\n".join(copy_lines),
+        }
+    )
+
+
+def build_important_moments(result, comparisons, priority_players):
+    players = result.get("players", [])
+    players_by_pid = player_by_pid(players)
+    target = result.get("target", {})
+    target_team = target.get("team")
+    report_context = {
+        "map": result.get("map") or "Unknown map",
+        "replay_name": result.get("replay_name") or result.get("uploaded_name") or "Unknown replay",
+        "target_name": target.get("name") or "Unknown",
+        "target_hero": target.get("hero") or "Unknown",
+        "target_team": team_name(target_team),
+    }
+    moments = []
+
+    bad_talent_rows = [
+        row
+        for row in result.get("level_summary", [])
+        if row.get("level") in {10, 13, 16, 20} and (row.get("diff_s") or 0) >= 15
+    ]
+    for row in bad_talent_rows[:2]:
+        time = row.get("enemy") or row.get("team") or "unknown"
+        level = row.get("level")
+        diff = round(row.get("diff_s") or 0)
+        time_s = time_to_seconds(time)
+        nearby = []
+        if time_s is not None:
+            for death in result.get("deaths", []):
+                player = players_by_pid.get(death.get("player"))
+                if player and player.get("team") == target_team and abs((death.get("time_s") or 0) - time_s) <= 45:
+                    nearby.append(f"{death.get('time')} {short_player(player)}")
+        nearby_text = "; ".join(nearby[:4]) if nearby else "рядом с этим окном смертей вашей команды не найдено"
+        add_moment(
+            moments,
+            report_context,
+            "high",
+            time,
+            "Talent window",
+            f"Враг раньше взял level {level}",
+            f"Враг взял level {level} раньше на {diff} секунд. Рядом: {nearby_text}.",
+            "В это окно нельзя принимать равный 5v5: у врага уже есть talent tier, а у вашей команды еще нет.",
+            "Посмотреть 45 секунд до и после этого тайминга: кто начал драку, были ли волны зачищены, был ли call отойти до выравнивания уровня.",
+            "Скажи, можно ли было избежать драки, какой call должен был быть и кто должен был остановить engage.",
+        )
+
+    target_deaths = []
+    for death in result.get("deaths", []):
+        player = players_by_pid.get(death.get("player"))
+        if player and player.get("team") == target_team:
+            target_deaths.append({**death, "player_info": player})
+    target_deaths.sort(key=lambda item: item.get("time_s") or 0)
+    clusters = []
+    current = []
+    for death in target_deaths:
+        if not current or (death.get("time_s") or 0) - (current[-1].get("time_s") or 0) <= 45:
+            current.append(death)
+        else:
+            if len(current) >= 2:
+                clusters.append(current)
+            current = [death]
+    if len(current) >= 2:
+        clusters.append(current)
+    clusters.sort(key=lambda cluster: (len(cluster), cluster[-1].get("time_s") or 0), reverse=True)
+    for cluster in clusters[:2]:
+        start = cluster[0].get("time")
+        end = cluster[-1].get("time")
+        players_text = ", ".join(short_player(item["player_info"]) for item in cluster[:5])
+        time = start if start == end else f"{start}-{end}"
+        add_moment(
+            moments,
+            report_context,
+            "high" if len(cluster) >= 3 else "medium",
+            time,
+            "Death cluster",
+            "Пачка смертей вашей команды",
+            f"За короткое окно умерли {len(cluster)} игрока вашей команды: {players_text}.",
+            "Пачка смертей обычно ломает темп: команда теряет soak, camp/objective setup и возможность защищать structures.",
+            "Разобрать 30 секунд до первой смерти: кто был впереди, был ли вижен/позиция, был ли шанс просто отойти.",
+            "Определи первую ошибку в этой цепочке, правильный disengage-call и что каждый игрок должен был сделать иначе.",
+        )
+
+    enemy_camps = [
+        camp
+        for camp in result.get("camps", [])
+        if camp.get("team_id") != target_team
+    ]
+    boss_camps = [camp for camp in enemy_camps if "boss" in (camp.get("camp_type") or "").lower()]
+    camp_candidates = boss_camps[:2] + [camp for camp in enemy_camps if camp not in boss_camps][:2]
+    for camp in camp_candidates[:3]:
+        severity = "high" if "boss" in (camp.get("camp_type") or "").lower() else "medium"
+        add_moment(
+            moments,
+            report_context,
+            severity,
+            camp.get("time") or "unknown",
+            "Camp timing",
+            f"Враг взял {camp.get('camp_type') or 'camp'}",
+            f"Враг взял {camp.get('camp_type') or 'camp'}.",
+            "Camp должен создавать давление до objective или push-окна. Если ваша команда реагирует поздно, она начинает следующий fight уже с минусом по карте.",
+            "Проверить 60 секунд до camp: кто должен был держать линию, можно ли было contest, был ли выгоднее trade на другой стороне.",
+            "Скажи, нужно было contest, trade или defend, и какой игрок должен был первым прочитать этот camp timing.",
+        )
+
+    priority_pids = {card["player"].get("pid") for card in priority_players[:3]}
+    personal_deaths = [
+        death
+        for death in target_deaths
+        if death.get("player") in priority_pids
+    ][:3]
+    for death in personal_deaths:
+        player = death["player_info"]
+        killer = short_player(players_by_pid.get(death.get("killer")))
+        add_moment(
+            moments,
+            report_context,
+            "medium",
+            death.get("time") or "unknown",
+            "Player mistake",
+            f"Смерть {short_player(player)}",
+            f"{short_player(player)} умер. Killer: {killer}.",
+            "Это персональный момент для разбора: нужно понять, смерть была неизбежной или это ошибка позиции/тайминга.",
+            "Посмотреть 20 секунд до смерти: где был танк/хил, был ли escape, был ли смысл стоять так глубоко.",
+            "Дай конкретный совет этому игроку: где стоять, когда отходить и какой сигнал считать опасным.",
+        )
+
+    for structure in result.get("major_structures", [])[:2]:
+        add_moment(
+            moments,
+            report_context,
+            "medium",
+            structure.get("time") or "unknown",
+            "Structure loss",
+            "Падение major structure",
+            f"Упала major structure: {structure.get('type') or 'structure'}.",
+            "Падение structure показывает, что предыдущее окно было проиграно или не было вовремя защищено.",
+            "Разобрать 60 секунд до падения: были ли deaths, camp pressure, проигранный talent tier или неправильный reset.",
+            "Скажи, что команда должна была сделать за минуту до этого: defend, trade, soak, camp или fight.",
+        )
+
+    seen = set()
+    unique = []
+    for moment in moments:
+        key = (moment["time"], moment["category"], moment["title"])
+        if key not in seen:
+            unique.append(moment)
+            seen.add(key)
+    unique.sort(key=lambda item: (severity_score(item["severity"]), time_to_seconds(item["time"].split("-")[0]) or 0), reverse=True)
+    all_copy_text = "\n\n---\n\n".join(moment["copy_text"] for moment in unique[:8])
+    return unique[:8], all_copy_text
+
+
 def build_win_focus(comparisons, priority_players, next_steps):
     problem_items = [item for item in comparisons if item["severity"] in {"high", "medium"}]
     if not problem_items:
@@ -173,12 +375,14 @@ def build_win_focus(comparisons, priority_players, next_steps):
 
     if main:
         title = main["title"]
-        problem = main["verdict"]
+        problem = main["actual"]
+        why = main["verdict"]
         first_fix = main["actions"][0] if main["actions"] else main["expected"]
         severity = main["severity"]
     else:
         title = "Главная проблема не выделена"
         problem = "По базовым метрикам нет одного очевидного провала. Нужно смотреть таймкоды fights/objectives."
+        why = "Базовые метрики не показывают простую причину. Нужен ручной просмотр ключевых fight."
         first_fix = "Выбрать 2-3 ключевых fight и проверить: была ли цель после драки."
         severity = "low"
 
@@ -186,6 +390,7 @@ def build_win_focus(comparisons, priority_players, next_steps):
         "severity": severity,
         "title": title,
         "problem": problem,
+        "why": why,
         "first_fix": first_fix,
         "critical_moments": critical_moments,
         "player_fixes": player_fixes,
@@ -666,12 +871,15 @@ def build_breakdown(result, teams):
     if not priority_players:
         priority_players = player_cards[:4]
     win_focus = build_win_focus(comparisons, priority_players, next_steps)
+    moments, moments_copy_text = build_important_moments(result, comparisons, priority_players)
 
     return {
         "primary": summaries[0],
         "summaries": summaries,
         "supporting_summaries": summaries[1:],
         "win_focus": win_focus,
+        "moments": moments,
+        "moments_copy_text": moments_copy_text,
         "comparisons": comparisons,
         "next_steps": next_steps[:5],
         "player_cards": player_cards,

@@ -42,10 +42,16 @@
           <span class="severity">{{ severity_label(report.breakdown.win_focus.severity) }}</span>
           <p class="eyebrow">Главная проблема матча</p>
           <h2>{{ report.breakdown.win_focus.title }}</h2>
-          <p>{{ report.breakdown.win_focus.problem }}</p>
-          <div class="hero-fix">
-            <span>Исправить первым</span>
-            <strong>{{ report.breakdown.win_focus.first_fix }}</strong>
+          <div class="hero-compare">
+            <div class="main-side done">
+              <span>Ошибка</span>
+              <strong>{{ report.breakdown.win_focus.problem }}</strong>
+              <p>{{ report.breakdown.win_focus.why }}</p>
+            </div>
+            <div class="main-side need">
+              <span>Исправление</span>
+              <strong>{{ report.breakdown.win_focus.first_fix }}</strong>
+            </div>
           </div>
         </div>
         <aside class="action-panel">
@@ -62,24 +68,31 @@
         <div class="section-title">
           <div>
             <p class="eyebrow">Главное для победы</p>
-            <h2>Основные ошибки и исправления</h2>
+            <h2>Ошибка слева, исправление справа</h2>
           </div>
-          <p class="muted">Сначала эти пункты. Остальные цифры ниже нужны только как доказательство.</p>
+          <p class="muted">Сначала исправлять эти пункты. Подробные цифры свернуты ниже.</p>
         </div>
-        <div class="victory-grid">
+        <div class="fix-board">
           <article class="focus-panel">
             <h3>Критичные моменты</h3>
             <div class="focus-list">
               {% for item in report.breakdown.win_focus.critical_moments %}
-              <div class="focus-item {{ item.severity }}">
+              <div class="fix-row {{ item.severity }}">
                 <div class="focus-head">
                   <span class="severity">{{ severity_label(item.severity) }}</span>
                   <strong>{{ item.window }}</strong>
                 </div>
-                <h4>{{ item.title }}</h4>
-                <p><b>Проблема:</b> {{ item.problem }}</p>
-                <p><b>Почему это мешало победить:</b> {{ item.impact }}</p>
-                <p><b>Исправить:</b> {{ item.fix }}</p>
+                <div class="fix-pair">
+                  <div class="fix-side done">
+                    <span>Ошибка</span>
+                    <strong>{{ item.title }}</strong>
+                    <p>{{ item.problem }}</p>
+                  </div>
+                  <div class="fix-side need">
+                    <span>Исправление</span>
+                    <strong>{{ item.fix }}</strong>
+                  </div>
+                </div>
               </div>
               {% endfor %}
             </div>
@@ -89,13 +102,21 @@
             <h3>Кому что исправить</h3>
             <div class="player-fix-list">
               {% for item in report.breakdown.win_focus.player_fixes %}
-              <div class="player-fix {{ item.severity }}">
+              <div class="player-fix fix-row {{ item.severity }}">
                 <div class="player-fix-title">
                   <strong>{{ item.name }}</strong>
                   <span>{{ item.hero }}</span>
                 </div>
-                <p><b>Проблема:</b> {{ item.problem }}</p>
-                <p><b>Исправить:</b> {{ item.fix }}</p>
+                <div class="fix-pair">
+                  <div class="fix-side done">
+                    <span>Ошибка</span>
+                    <strong>{{ item.problem }}</strong>
+                  </div>
+                  <div class="fix-side need">
+                    <span>Исправление</span>
+                    <strong>{{ item.fix }}</strong>
+                  </div>
+                </div>
               </div>
               {% endfor %}
             </div>
@@ -103,7 +124,50 @@
         </div>
       </section>
 
-      <section class="section">
+      {% if report.breakdown.moments %}
+      <section class="section moments-section">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">Для ручного разбора</p>
+            <h2>Важные моменты с таймингами</h2>
+          </div>
+          <div class="section-actions">
+            <p class="muted">Скопируй один момент и отправь в DeepSeek.</p>
+            <button class="copy-button secondary" type="button" data-copy-target="all-moments-copy">Копировать все</button>
+          </div>
+        </div>
+        <textarea id="all-moments-copy" class="copy-source" readonly>{{ report.breakdown.moments_copy_text }}</textarea>
+        <div class="moment-grid">
+          {% for item in report.breakdown.moments %}
+          <article class="moment-card {{ item.severity }}">
+            <div class="moment-head">
+              <div>
+                <span class="moment-time">{{ item.time }}</span>
+                <span class="moment-category">{{ item.category }}</span>
+              </div>
+              <span class="severity">{{ severity_label(item.severity) }}</span>
+            </div>
+            <h3>{{ item.title }}</h3>
+            <div class="fix-pair compact">
+              <div class="fix-side done">
+                <span>Момент</span>
+                <strong>{{ item.happened }}</strong>
+              </div>
+              <div class="fix-side need">
+                <span>Что смотреть</span>
+                <strong>{{ item.check }}</strong>
+              </div>
+            </div>
+            <textarea id="moment-copy-{{ loop.index }}" class="copy-source" readonly>{{ item.copy_text }}</textarea>
+            <button class="copy-button" type="button" data-copy-target="moment-copy-{{ loop.index }}">Копировать момент</button>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <details class="secondary-details section">
+        <summary>Показать подробные сравнения и цифры</summary>
         <div class="section-title">
           <div>
             <p class="eyebrow">Факт против нормы</p>
@@ -140,10 +204,11 @@
           </article>
           {% endfor %}
         </div>
-      </section>
+      </details>
 
       {% if report.breakdown.supporting_summaries %}
-      <section class="section">
+      <details class="secondary-details section">
+        <summary>Показать дополнительные причины</summary>
         <div class="section-title">
           <div>
             <p class="eyebrow">Почему это произошло</p>
@@ -159,10 +224,11 @@
           </article>
           {% endfor %}
         </div>
-      </section>
+      </details>
       {% endif %}
 
-      <section class="section">
+      <details class="secondary-details section">
+        <summary>Показать подробные карточки игроков</summary>
         <div class="section-title">
           <div>
             <p class="eyebrow">Личный фокус</p>
@@ -200,7 +266,7 @@
           </article>
           {% endfor %}
         </div>
-      </section>
+      </details>
 
       <section class="section detail-summary">
         <div class="section-title">
@@ -357,5 +423,56 @@
         </section>
       </details>
     </main>
+    <script>
+      (() => {
+        const copyText = async (text) => {
+          if (navigator.clipboard && window.isSecureContext) {
+            try {
+              await navigator.clipboard.writeText(text);
+              return;
+            } catch {
+              // Fall back to the selection path below.
+            }
+          }
+          const helper = document.createElement("textarea");
+          helper.value = text;
+          helper.setAttribute("readonly", "");
+          helper.style.position = "fixed";
+          helper.style.left = "-9999px";
+          helper.style.top = "0";
+          document.body.appendChild(helper);
+          helper.focus();
+          helper.select();
+          helper.setSelectionRange(0, helper.value.length);
+          const copied = document.execCommand("copy");
+          helper.remove();
+          if (!copied) {
+            throw new Error("copy failed");
+          }
+        };
+
+        document.querySelectorAll("[data-copy-target]").forEach((button) => {
+          button.addEventListener("click", async () => {
+            const source = document.getElementById(button.dataset.copyTarget);
+            if (!source) return;
+            const original = button.textContent;
+            try {
+              await copyText(source.value || source.textContent || "");
+              button.textContent = "Скопировано";
+              button.classList.add("copied");
+              window.setTimeout(() => {
+                button.textContent = original;
+                button.classList.remove("copied");
+              }, 1600);
+            } catch {
+              button.textContent = "Не скопировано";
+              window.setTimeout(() => {
+                button.textContent = original;
+              }, 1600);
+            }
+          });
+        });
+      })();
+    </script>
   </body>
 </html>
