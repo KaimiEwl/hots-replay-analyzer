@@ -1,0 +1,43 @@
+# Local/private replay artifacts
+downloads/
+analysis/
+PROJECT.md
+*.StormReplay
+tools/heroprotocol/.git.local-backup/
+tools/generate_full_folder_report.py
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build/output/log files
+dist/
+build/
+*.egg-info/
+*.log
+*.tmp
+*.bak
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
