@@ -1,6 +1,7 @@
 # Local/private replay artifacts
 downloads/
 analysis/
+data/
 PROJECT.md
 *.StormReplay
 tools/heroprotocol/.git.local-backup/

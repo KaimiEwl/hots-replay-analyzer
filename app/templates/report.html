@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ report.map }} - HOTS Replay Report</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">H</div>
+          <span>HOTS Replay Analyzer</span>
+        </div>
+        <a class="ghost-link" href="/">Analyze another</a>
+      </header>
+
+      <section class="report-head">
+        <div>
+          <p class="muted">{{ report.replay_name }}</p>
+          <h1>{{ report.map }}</h1>
+        </div>
+        <a class="ghost-link" href="{{ report.json_path }}">Raw JSON</a>
+      </section>
+
+      <section class="metrics">
+        <div class="metric"><span>Length</span><strong>{{ report.length }}</strong></div>
+        <div class="metric"><span>Build</span><strong>{{ report.build }}</strong></div>
+        <div class="metric"><span>Protocol</span><strong>{{ report.protocol_build }}</strong></div>
+        <div class="metric"><span>Fallback</span><strong>{{ "yes" if report.fallback else "no" }}</strong></div>
+      </section>
+
+      <section class="section">
+        <h2>Teams</h2>
+        <div class="grid-2">
+          {% for team_id, players in report.teams.items() %}
+          <div class="team">
+            <h3>Team {{ team_id }}</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Hero</th>
+                    <th>KDA</th>
+                    <th>Hero Dmg</th>
+                    <th>Struct</th>
+                    <th>XP</th>
+                    <th>Dead</th>
+                    <th>Camps</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for player in players %}
+                  <tr>
+                    <td>{{ player.name }}</td>
+                    <td>{{ player.hero }}</td>
+                    <td>{{ player.view.kda }}</td>
+                    <td>{{ player.view.hero_damage }}</td>
+                    <td>{{ player.view.structure_damage }}</td>
+                    <td>{{ player.view.xp }}</td>
+                    <td>{{ player.view.dead_time }}</td>
+                    <td>{{ player.view.camps }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Level Windows</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Level</th>
+                <th>Team</th>
+                <th>Enemy</th>
+                <th>Diff</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in report.level_summary %}
+              <tr>
+                <td>{{ row.level }}</td>
+                <td>{{ row.team }}</td>
+                <td>{{ row.enemy }}</td>
+                <td>{{ row.diff_s }}s</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section grid-2">
+        <div>
+          <h2>Damage Leaders</h2>
+          <div class="timeline">
+            {% for player in report.leaders %}
+            <div class="event">
+              <div class="time">#{{ loop.index }}</div>
+              <div>{{ player.name }} / {{ player.hero }} - {{ player.view.hero_damage }} hero damage</div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div>
+          <h2>Death Pressure</h2>
+          <div class="timeline">
+            {% for player in report.danger %}
+            <div class="event">
+              <div class="time">#{{ loop.index }}</div>
+              <div>{{ player.name }} / {{ player.hero }} - {{ player.view.kda }}, {{ player.view.dead_time }} dead</div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Deaths</h2>
+        <div class="timeline">
+          {% for death in report.deaths %}
+          <div class="event">
+            <div class="time">{{ death.time }}</div>
+            <div>{{ death.victim }} killed by {{ death.killer }}</div>
+          </div>
+          {% else %}
+          <p class="muted">No hero deaths found in tracker events.</p>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="section grid-2">
+        <div>
+          <h2>Camps</h2>
+          <div class="timeline">
+            {% for camp in report.camps %}
+            <div class="event">
+              <div class="time">{{ camp.time }}</div>
+              <div>Team {{ camp.team_id }} captured {{ camp.camp_type }}</div>
+            </div>
+            {% else %}
+            <p class="muted">No camp captures found.</p>
+            {% endfor %}
+          </div>
+        </div>
+        <div>
+          <h2>Structures</h2>
+          <div class="timeline">
+            {% for structure in report.structures %}
+            <div class="event">
+              <div class="time">{{ structure.time }}</div>
+              <div>{{ structure.type }} destroyed by player {{ structure.killer }}</div>
+            </div>
+            {% else %}
+            <p class="muted">No major structure deaths found.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

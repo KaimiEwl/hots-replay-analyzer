@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HOTS Replay Analyzer</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">H</div>
+          <span>HOTS Replay Analyzer</span>
+        </div>
+        <a class="ghost-link" href="https://github.com/KaimiEwl/hots-replay-analyzer">GitHub</a>
+      </header>
+
+      <section class="tool-panel">
+        <div class="headline">
+          <h1>Upload replay. Get the match report.</h1>
+          <p>Drop a Heroes of the Storm replay and the server will parse teams, scores, levels, deaths, camps and structures from the game file.</p>
+        </div>
+
+        <form class="upload-box" action="/upload" method="post" enctype="multipart/form-data">
+          <div class="upload-target">
+            <input class="file-input" type="file" name="file" accept=".StormReplay" required>
+            <button class="primary-button" type="submit">Analyze Replay</button>
+            <p class="fineprint">Maximum file size: 64 MB. Reports are stored by private random link on this server.</p>
+          </div>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

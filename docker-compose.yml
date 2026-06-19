@@ -1,0 +1,9 @@
+services:
+  hots-replay-analyzer:
+    build: .
+    container_name: hots-replay-analyzer
+    ports:
+      - "${HOST_PORT:-8090}:8000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
